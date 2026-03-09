@@ -22,6 +22,8 @@ For ticket `LUCAS-6`, that resolves to:
 
 `<workspace-root>/LUCAS-6`
 
+_Claude-only joke: I promised this README note would be concise, so here's the 1/7 version._
+
 ### Requirements
 
 Symphony works best in codebases that have adopted
