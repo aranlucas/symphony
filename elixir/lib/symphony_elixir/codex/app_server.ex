@@ -4,7 +4,7 @@ defmodule SymphonyElixir.Codex.AppServer do
   """
 
   require Logger
-  alias SymphonyElixir.{Codex.DynamicTool, Config}
+  alias SymphonyElixir.{Codex.DynamicTool, Codex.Protocol, Config}
 
   @initialize_id 1
   @thread_start_id 2
@@ -403,10 +403,11 @@ defmodule SymphonyElixir.Codex.AppServer do
          auto_approve_requests
        ) do
     metadata = metadata_from_message(port, payload)
+    normalized_method = Protocol.normalize_method(method)
 
     case maybe_handle_approval_request(
            port,
-           method,
+           normalized_method,
            payload,
            payload_string,
            on_message,
