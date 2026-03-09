@@ -12,6 +12,12 @@ _In this [demo video](.github/media/symphony-demo.mp4), Symphony monitors a Line
 
 ## Running Symphony
 
+### Workspace path
+
+For ticket `LUCAS-6`, this repository is checked out at:
+
+`/Users/lucas.arango/code/symphony-workspaces/LUCAS-6`
+
 ### Requirements
 
 Symphony works best in codebases that have adopted
