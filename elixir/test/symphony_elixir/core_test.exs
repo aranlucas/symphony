@@ -949,6 +949,117 @@ defmodule SymphonyElixir.CoreTest do
     end
   end
 
+  test "agent runner uses Claude ACP adapter with lifecycle logs and cleanup" do
+    test_root =
+      Path.join(
+        System.tmp_dir!(),
+        "symphony-elixir-agent-runner-claude-acp-#{System.unique_integer([:positive])}"
+      )
+
+    try do
+      template_repo = Path.join(test_root, "source")
+      workspace_root = Path.join(test_root, "workspaces")
+      codex_binary = Path.join(test_root, "fake-codex")
+      trace_file = Path.join(test_root, "claude-acp.trace")
+      previous_trace = System.get_env("SYMP_TEST_CODEx_TRACE")
+
+      on_exit(fn ->
+        if is_binary(previous_trace) do
+          System.put_env("SYMP_TEST_CODEx_TRACE", previous_trace)
+        else
+          System.delete_env("SYMP_TEST_CODEx_TRACE")
+        end
+      end)
+
+      File.mkdir_p!(template_repo)
+      File.write!(Path.join(template_repo, "README.md"), "# test")
+      System.cmd("git", ["-C", template_repo, "init", "-b", "main"])
+      System.cmd("git", ["-C", template_repo, "config", "user.name", "Test User"])
+      System.cmd("git", ["-C", template_repo, "config", "user.email", "test@example.com"])
+      System.cmd("git", ["-C", template_repo, "add", "README.md"])
+      System.cmd("git", ["-C", template_repo, "commit", "-m", "initial"])
+      System.put_env("SYMP_TEST_CODEx_TRACE", trace_file)
+
+      File.write!(codex_binary, """
+      #!/bin/sh
+      trace_file="${SYMP_TEST_CODEx_TRACE:-/tmp/claude-acp.trace}"
+      count=0
+      trap 'printf "%s\\n" "EXIT" >> "$trace_file"' EXIT
+
+      while IFS= read -r line; do
+        count=$((count + 1))
+        printf 'JSON:%s\\n' "$line" >> "$trace_file"
+
+        case "$count" in
+          1)
+            printf '%s\\n' '{"id":1,"result":{}}'
+            ;;
+          2)
+            printf '%s\\n' '{"id":2,"result":{"thread":{"id":"thread-claude"}}}'
+            ;;
+          3)
+            printf '%s\\n' '{"id":3,"result":{"turn":{"id":"turn-claude"}}}'
+            ;;
+          4)
+            printf '%s\\n' '{"method":"turn/completed"}'
+            ;;
+          *)
+            ;;
+        esac
+      done
+      """)
+
+      File.chmod!(codex_binary, 0o755)
+
+      write_workflow_file!(Workflow.workflow_file_path(),
+        workspace_root: workspace_root,
+        hook_after_create: "cp #{Path.join(template_repo, "README.md")} README.md",
+        agent_adapter: "claude_acp",
+        codex_command: "#{codex_binary} app-server"
+      )
+
+      issue = %Issue{
+        id: "issue-claude-acp",
+        identifier: "MT-601",
+        title: "Claude ACP integration",
+        description: "Validate adapter lifecycle and cleanup",
+        state: "In Progress",
+        url: "https://example.org/issues/MT-601",
+        labels: ["agent:claude"]
+      }
+
+      test_pid = self()
+
+      log =
+        capture_log(fn ->
+          assert :ok =
+                   AgentRunner.run(
+                     issue,
+                     test_pid,
+                     issue_state_fetcher: fn [_issue_id] -> {:ok, [%{issue | state: "Done"}]} end
+                   )
+        end)
+
+      assert log =~ "Starting Claude ACP adapter session"
+      assert log =~ "adapter=Claude ACP"
+      assert log =~ "Stopping Claude ACP adapter session"
+
+      assert_receive {:codex_worker_update, "issue-claude-acp", %{event: :session_started, session_id: "thread-claude-turn-claude"}},
+                     500
+
+      assert_receive {:codex_worker_update, "issue-claude-acp", %{event: :turn_completed}}, 500
+
+      trace = File.read!(trace_file)
+      assert trace =~ "\"method\":\"initialize\""
+      assert trace =~ "\"method\":\"thread/start\""
+      assert trace =~ "\"method\":\"turn/start\""
+      assert trace =~ "EXIT"
+    after
+      System.delete_env("SYMP_TEST_CODEx_TRACE")
+      File.rm_rf(test_root)
+    end
+  end
+
   test "agent runner continues with a follow-up turn while the issue remains active" do
     test_root =
       Path.join(

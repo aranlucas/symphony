@@ -15,10 +15,9 @@ This directory contains the current Elixir/OTP implementation of Symphony, based
 
 1. Polls Linear for candidate work
 2. Creates an isolated workspace per issue
-3. Launches Codex in [App Server mode](https://developers.openai.com/codex/app-server/) inside the
-   workspace
-4. Sends a workflow prompt to Codex
-5. Keeps Codex working on the issue until the work is done
+3. Launches the configured coding-agent adapter in app-server/ACP mode inside the workspace
+4. Sends a workflow prompt to the adapter
+5. Keeps the agent working on the issue until the work is done
 
 During app-server sessions, Symphony also serves a client-side `linear_graphql` tool so that repo
 skills can make raw Linear GraphQL calls.
@@ -96,6 +95,7 @@ hooks:
   after_create: |
     git clone git@github.com:your-org/your-repo.git .
 agent:
+  adapter: codex_app_server
   max_concurrent_agents: 10
   max_turns: 20
 codex:
@@ -118,8 +118,12 @@ Notes:
 - Supported `codex.thread_sandbox` values: `read-only`, `workspace-write`, `danger-full-access`.
 - Supported `codex.turn_sandbox_policy.type` values: `dangerFullAccess`, `readOnly`,
   `externalSandbox`, `workspaceWrite`.
-- `agent.max_turns` caps how many back-to-back Codex turns Symphony will run in a single agent
-  invocation when a turn completes normally but the issue is still in an active state. Default: `20`.
+- `agent.adapter` selects the active agent adapter. Supported values:
+  - `codex_app_server` (default)
+  - `claude_acp`
+- `agent.max_turns` caps how many back-to-back turns Symphony will run in a single agent
+  invocation when a turn completes normally but the issue is still in an active state. Default:
+  `20`.
 - If the Markdown body is blank, Symphony uses a default prompt template that includes the issue
   identifier, title, and body.
 - Use `hooks.after_create` to bootstrap a fresh workspace. For a Git-backed repo, you can run

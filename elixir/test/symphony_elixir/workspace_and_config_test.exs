@@ -644,6 +644,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
 
     write_workflow_file!(Workflow.workflow_file_path(),
       workspace_root: nil,
+      agent_adapter: nil,
       max_concurrent_agents: nil,
       codex_approval_policy: nil,
       codex_thread_sandbox: nil,
@@ -660,6 +661,9 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert Config.linear_project_slug() == nil
     assert Config.workspace_root() == Path.join(System.tmp_dir!(), "symphony_workspaces")
     assert Config.max_concurrent_agents() == 10
+    assert Config.agent_adapter() == :codex_app_server
+    assert Config.agent_adapter_label() == "Codex App Server"
+    assert Config.agent_adapter_module() == SymphonyElixir.Codex.AppServer
     assert Config.codex_command() == "codex app-server"
 
     assert Config.codex_approval_policy() == %{
@@ -689,11 +693,15 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert Config.codex_command() == "codex app-server --model gpt-5.3-codex"
 
     write_workflow_file!(Workflow.workflow_file_path(),
+      agent_adapter: "claude_acp",
       codex_approval_policy: "on-request",
       codex_thread_sandbox: "workspace-write",
       codex_turn_sandbox_policy: %{type: "workspaceWrite", writableRoots: ["/tmp/workspace", "/tmp/cache"]}
     )
 
+    assert Config.agent_adapter() == :claude_acp
+    assert Config.agent_adapter_label() == "Claude ACP"
+    assert Config.agent_adapter_module() == SymphonyElixir.Claude.ACP
     assert Config.codex_approval_policy() == "on-request"
     assert Config.codex_thread_sandbox() == "workspace-write"
 
@@ -718,6 +726,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert Config.codex_stall_timeout_ms() == 300_000
 
     write_workflow_file!(Workflow.workflow_file_path(),
+      agent_adapter: "invalid-adapter",
       tracker_active_states: %{todo: true},
       tracker_terminal_states: %{done: true},
       poll_interval_ms: %{bad: true},
@@ -736,6 +745,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert Config.linear_terminal_states() == ["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]
     assert Config.poll_interval_ms() == 30_000
     assert Config.workspace_root() == Path.join(System.tmp_dir!(), "symphony_workspaces")
+    assert Config.agent_adapter() == :codex_app_server
     assert Config.max_retry_backoff_ms() == 300_000
     assert Config.max_concurrent_agents_for_state("Todo") == 1
     assert Config.max_concurrent_agents_for_state("Review") == 10
@@ -745,6 +755,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert Config.observability_render_interval_ms() == 16
     assert Config.server_port() == nil
     assert Config.server_host() == "123"
+    assert {:error, {:invalid_agent_adapter, "invalid-adapter"}} = Config.validate!()
 
     write_workflow_file!(Workflow.workflow_file_path(), codex_approval_policy: "")
 

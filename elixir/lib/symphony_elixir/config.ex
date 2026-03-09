@@ -6,6 +6,8 @@ defmodule SymphonyElixir.Config do
   alias NimbleOptions
   alias SymphonyElixir.Workflow
 
+  @agent_adapter_codex "codex_app_server"
+  @agent_adapter_claude "claude_acp"
   @default_active_states ["Todo", "In Progress"]
   @default_terminal_states ["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]
   @default_linear_endpoint "https://api.linear.app/graphql"
@@ -27,6 +29,7 @@ defmodule SymphonyElixir.Config do
   @default_hook_timeout_ms 60_000
   @default_max_concurrent_agents 10
   @default_agent_max_turns 20
+  @default_agent_adapter @agent_adapter_codex
   @default_max_retry_backoff_ms 300_000
   @default_codex_command "codex app-server"
   @default_codex_turn_timeout_ms 3_600_000
@@ -82,6 +85,7 @@ defmodule SymphonyElixir.Config do
                                type: :map,
                                default: %{},
                                keys: [
+                                 adapter: [type: :string, default: @default_agent_adapter],
                                  max_concurrent_agents: [
                                    type: :integer,
                                    default: @default_max_concurrent_agents
@@ -160,6 +164,7 @@ defmodule SymphonyElixir.Config do
 
   @type workflow_payload :: Workflow.loaded_workflow()
   @type tracker_kind :: String.t() | nil
+  @type agent_adapter :: :codex_app_server | :claude_acp
   @type codex_runtime_settings :: %{
           approval_policy: String.t() | map(),
           thread_sandbox: String.t(),
@@ -257,6 +262,30 @@ defmodule SymphonyElixir.Config do
   @spec max_retry_backoff_ms() :: pos_integer()
   def max_retry_backoff_ms do
     get_in(validated_workflow_options(), [:agent, :max_retry_backoff_ms])
+  end
+
+  @spec agent_adapter() :: agent_adapter()
+  def agent_adapter do
+    case resolve_agent_adapter() do
+      {:ok, adapter} -> adapter
+      {:error, _reason} -> :codex_app_server
+    end
+  end
+
+  @spec agent_adapter_label() :: String.t()
+  def agent_adapter_label do
+    case agent_adapter() do
+      :claude_acp -> "Claude ACP"
+      :codex_app_server -> "Codex App Server"
+    end
+  end
+
+  @spec agent_adapter_module() :: module()
+  def agent_adapter_module do
+    case agent_adapter() do
+      :claude_acp -> SymphonyElixir.Claude.ACP
+      :codex_app_server -> SymphonyElixir.Codex.AppServer
+    end
   end
 
   @spec agent_max_turns() :: pos_integer()
@@ -367,6 +396,7 @@ defmodule SymphonyElixir.Config do
          :ok <- require_tracker_kind(),
          :ok <- require_linear_token(),
          :ok <- require_linear_project(),
+         :ok <- require_supported_agent_adapter(),
          :ok <- require_valid_codex_runtime_settings() do
       require_codex_command()
     end
@@ -420,6 +450,13 @@ defmodule SymphonyElixir.Config do
 
       _ ->
         :ok
+    end
+  end
+
+  defp require_supported_agent_adapter do
+    case resolve_agent_adapter() do
+      {:ok, _adapter} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -479,6 +516,7 @@ defmodule SymphonyElixir.Config do
 
   defp extract_agent_options(section) do
     %{}
+    |> put_if_present(:adapter, scalar_string_value(Map.get(section, "adapter")))
     |> put_if_present(:max_concurrent_agents, integer_value(Map.get(section, "max_concurrent_agents")))
     |> put_if_present(:max_turns, positive_integer_value(Map.get(section, "max_turns")))
     |> put_if_present(:max_retry_backoff_ms, positive_integer_value(Map.get(section, "max_retry_backoff_ms")))
@@ -772,6 +810,44 @@ defmodule SymphonyElixir.Config do
       "excludeTmpdirEnvVar" => false,
       "excludeSlashTmp" => false
     }
+  end
+
+  defp resolve_agent_adapter do
+    case fetch_value([["agent", "adapter"]], :missing) do
+      :missing ->
+        {:ok, :codex_app_server}
+
+      nil ->
+        {:ok, :codex_app_server}
+
+      value when is_binary(value) ->
+        case normalize_agent_adapter(value) do
+          :codex_app_server -> {:ok, :codex_app_server}
+          :claude_acp -> {:ok, :claude_acp}
+          nil -> {:ok, :codex_app_server}
+          :invalid -> {:error, {:invalid_agent_adapter, value}}
+        end
+
+      value ->
+        {:error, {:invalid_agent_adapter, value}}
+    end
+  end
+
+  defp normalize_agent_adapter(adapter) when is_binary(adapter) do
+    adapter
+    |> String.trim()
+    |> String.downcase()
+    |> String.replace("-", "_")
+    |> case do
+      "" -> nil
+      "codex" -> :codex_app_server
+      "codex_appserver" -> :codex_app_server
+      @agent_adapter_codex -> :codex_app_server
+      "claude" -> :claude_acp
+      "claude_code_acp" -> :claude_acp
+      @agent_adapter_claude -> :claude_acp
+      _ -> :invalid
+    end
   end
 
   defp normalize_issue_state(state_name) when is_binary(state_name) do
