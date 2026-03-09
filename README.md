@@ -14,9 +14,13 @@ _In this [demo video](.github/media/symphony-demo.mp4), Symphony monitors a Line
 
 ### Workspace path
 
-For ticket `LUCAS-6`, this repository is checked out at:
+Symphony uses per-issue workspace directories in the form:
 
-`/Users/lucas.arango/code/symphony-workspaces/LUCAS-6`
+`<workspace-root>/<issue-id>`
+
+For ticket `LUCAS-6`, that resolves to:
+
+`<workspace-root>/LUCAS-6`
 
 ### Requirements
 
