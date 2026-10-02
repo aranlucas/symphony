@@ -35,6 +35,10 @@ issue claimed and exposes it as blocked in the runtime state, JSON API, and dash
 entries are in memory only; restarting the orchestrator clears that blocked map, so any still-active
 tracker issue can become a dispatch candidate again after restart.
 
+Before starting an agent, Symphony refreshes the issue by its exact tracker ID and checks
+concurrency limits again using the refreshed state. A retry whose refreshed state has no free
+slots keeps its claim and waits for the usual retry backoff.
+
 ## How to use it
 
 1. Make sure your codebase is set up to work well with agents: see
