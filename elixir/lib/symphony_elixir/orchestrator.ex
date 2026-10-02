@@ -907,7 +907,13 @@ defmodule SymphonyElixir.Orchestrator do
   defp dispatch_issue(%State{} = state, issue, attempt \\ nil, preferred_worker_host \\ nil) do
     case refresh_issue_for_dispatch(issue) do
       {:ok, %Issue{} = refreshed_issue} ->
-        do_dispatch_issue(state, refreshed_issue, attempt, preferred_worker_host)
+        state = refresh_runtime_config(state)
+
+        if should_dispatch_issue?(refreshed_issue, state, active_state_set(), terminal_state_set()) do
+          do_dispatch_issue(state, refreshed_issue, attempt, preferred_worker_host)
+        else
+          state
+        end
 
       {:skip, _reason} ->
         state
@@ -1005,19 +1011,16 @@ defmodule SymphonyElixir.Orchestrator do
 
   defp revalidate_issue_for_dispatch(%Issue{id: issue_id}, issue_fetcher, terminal_states)
        when is_binary(issue_id) and is_function(issue_fetcher, 1) do
-    case issue_fetcher.([issue_id]) do
-      {:ok, [%Issue{} = refreshed_issue | _]} ->
-        if retry_candidate_issue?(refreshed_issue, terminal_states) do
-          {:ok, refreshed_issue}
-        else
-          {:skip, refreshed_issue}
-        end
-
-      {:ok, []} ->
-        {:skip, :missing}
-
-      {:error, reason} ->
-        {:error, reason}
+    with {:ok, issues} <- issue_fetcher.([issue_id]),
+         %Issue{} = refreshed_issue <- find_issue_by_id(issues, issue_id) do
+      if retry_candidate_issue?(refreshed_issue, terminal_states) do
+        {:ok, refreshed_issue}
+      else
+        {:skip, refreshed_issue}
+      end
+    else
+      nil -> {:skip, :missing}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -1184,7 +1187,7 @@ defmodule SymphonyElixir.Orchestrator do
          worker_slots_available?(state, metadata[:worker_host]) do
       case refresh_issue_for_dispatch(issue) do
         {:ok, %Issue{} = refreshed_issue} ->
-          {:noreply, do_dispatch_issue(state, refreshed_issue, attempt, metadata[:worker_host])}
+          dispatch_refreshed_retry(state, refreshed_issue, attempt, metadata)
 
         {:skip, :missing} ->
           {:noreply, release_issue_claim(state, issue.id)}
@@ -1205,19 +1208,33 @@ defmodule SymphonyElixir.Orchestrator do
            )}
       end
     else
-      Logger.debug("No available slots for retrying #{issue_context(issue)}; retrying again")
-
-      {:noreply,
-       schedule_issue_retry(
-         state,
-         issue.id,
-         attempt + 1,
-         Map.merge(metadata, %{
-           identifier: issue.identifier,
-           error: "no available orchestrator slots"
-         })
-       )}
+      retry_without_capacity(state, issue, attempt, metadata)
     end
+  end
+
+  defp dispatch_refreshed_retry(state, issue, attempt, metadata) do
+    state = refresh_runtime_config(state)
+
+    if dispatch_slots_available?(issue, state) and worker_slots_available?(state, metadata[:worker_host]) do
+      {:noreply, do_dispatch_issue(state, issue, attempt, metadata[:worker_host])}
+    else
+      retry_without_capacity(state, issue, attempt, metadata)
+    end
+  end
+
+  defp retry_without_capacity(state, issue, attempt, metadata) do
+    Logger.debug("No available slots for retrying #{issue_context(issue)}; retrying again")
+
+    {:noreply,
+     schedule_issue_retry(
+       state,
+       issue.id,
+       attempt + 1,
+       Map.merge(metadata, %{
+         identifier: issue.identifier,
+         error: "no available orchestrator slots"
+       })
+     )}
   end
 
   defp release_issue_claim(%State{} = state, issue_id) do
