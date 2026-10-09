@@ -1,9 +1,9 @@
-.PHONY: help all setup deps build fmt fmt-check lint test coverage ci dialyzer e2e
+.PHONY: help all setup deps build fmt fmt-check lint test coverage ci dialyzer e2e dev dev-direct
 
 MIX ?= mix
 
 help:
-	@echo "Targets: setup, deps, fmt, fmt-check, lint, test, coverage, dialyzer, e2e, ci"
+	@echo "Targets: dev, dev-direct, setup, deps, fmt, fmt-check, lint, test, coverage, dialyzer, e2e, ci"
 
 setup:
 	$(MIX) setup
@@ -45,3 +45,10 @@ ci:
 	$(MAKE) dialyzer
 
 all: ci
+
+# Pass the same explicit acknowledgement/workflow arguments as bin/symphony.
+dev:
+	sh bin/symphony-portless $(ARGS)
+
+dev-direct:
+	./bin/symphony $(ARGS)

@@ -307,6 +307,38 @@ The observability UI now runs on a minimal Phoenix stack:
 - Phoenix dependency static assets for the LiveView client bootstrap
 - Tracker issue identifiers link to the tracker-provided URL when it uses `http` or `https`
 
+
+## Local URLs with Portless
+
+Run from `elixir/` after the usual dependency setup and `mix build`.
+This launcher passes all existing Symphony arguments to the built executable and
+supplies the allocated dashboard port. Symphony still enforces its required
+startup acknowledgement and workflow validation.
+
+The standard development command uses [Portless](https://github.com/vercel-labs/portless).
+Install its pinned CLI once with Node.js 24 or newer, then run this repository's command after the
+normal dependency and environment setup:
+
+```sh
+npm install -g portless@0.15.7
+make dev ARGS='--i-understand-that-this-will-be-running-without-the-usual-guardrails ./WORKFLOW.md'
+```
+
+The main checkout uses `https://symphony.localhost` with the default proxy settings.
+Use the URL printed by Portless if you have changed its proxy port, TLS, or TLD.
+Linked Git worktrees get a branch prefix, so each checkout has its own origin.
+The first HTTPS run can request local administrator permission to bind port 443,
+trust its development certificate, and synchronize local hostnames. Ctrl+C stops
+the child server and removes its route. The direct fallback below starts the
+server without the proxy.
+
+The observability UI remains at `/`, with its normal JSON API under `/api/v1/`.
+Keep `server.host` set to the default `127.0.0.1` in the workflow for local access.
+The launcher does not change tracker credentials, issue polling, workspace policy,
+or agent permissions; running it starts the same orchestrator as `bin/symphony`.
+Use `make dev-direct ARGS='...'` with the same required acknowledgement and workflow
+arguments for the original port/config workflow.
+
 ## Project Layout
 
 - `lib/`: application code and Mix tasks
