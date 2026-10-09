@@ -1,9 +1,9 @@
-.PHONY: help all setup deps build fmt fmt-check lint test coverage ci dialyzer e2e
+.PHONY: help all setup deps build fmt fmt-check lint test coverage ci dialyzer e2e dev
 
 MIX ?= mix
 
 help:
-	@echo "Targets: setup, deps, fmt, fmt-check, lint, test, coverage, dialyzer, e2e, ci"
+	@echo "Targets: dev, setup, deps, fmt, fmt-check, lint, test, coverage, dialyzer, e2e, ci"
 
 setup:
 	$(MIX) setup
@@ -45,3 +45,7 @@ ci:
 	$(MAKE) dialyzer
 
 all: ci
+
+# Portless routes https://symphony.localhost to the dashboard; pass the usual bin/symphony arguments in ARGS.
+dev:
+	portless run --name symphony --app-port 4000 ./bin/symphony $(ARGS) --port 4000

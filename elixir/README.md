@@ -121,6 +121,9 @@ Optional flags:
 
 - `--logs-root` tells Symphony to write logs under a different directory (default: `./log`)
 - `--port` also starts the Phoenix observability service (default: disabled)
+- `make dev ARGS='<flags> ./WORKFLOW.md'` runs the built `bin/symphony` with the dashboard at
+  `https://symphony.localhost` through [Portless](https://github.com/vercel-labs/portless)
+  (`npm install -g portless`); its first run may ask for `sudo` to bind port 443 and trust a local certificate
 
 The `WORKFLOW.md` file uses YAML front matter for configuration, plus a Markdown body used as the
 Codex session prompt.
