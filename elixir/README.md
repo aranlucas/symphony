@@ -329,15 +329,12 @@ Use the URL printed by Portless if you have changed its proxy port, TLS, or TLD.
 Linked Git worktrees get a branch prefix, so each checkout has its own origin.
 The first HTTPS run can request local administrator permission to bind port 443,
 trust its development certificate, and synchronize local hostnames. Ctrl+C stops
-the child server and removes its route. The direct fallback below starts the
-server without the proxy.
+the child server and removes its route.
 
 The observability UI remains at `/`, with its normal JSON API under `/api/v1/`.
 Keep `server.host` set to the default `127.0.0.1` in the workflow for local access.
 The launcher does not change tracker credentials, issue polling, workspace policy,
 or agent permissions; running it starts the same orchestrator as `bin/symphony`.
-Use `make dev-direct ARGS='...'` with the same required acknowledgement and workflow
-arguments for the original port/config workflow.
 
 ## Project Layout
 
