@@ -1,6 +1,0 @@
-#!/bin/sh
-set -eu
-
-# Resolve the implementation root even when invoked from another directory.
-cd "$(dirname "$0")/.."
-exec portless run --name symphony sh -c 'exec ./bin/symphony "$@" --port "$PORT"' symphony-portless "$@"

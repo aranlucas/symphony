@@ -3,7 +3,7 @@
 MIX ?= mix
 
 help:
-	@echo "Targets: dev,, setup, deps, fmt, fmt-check, lint, test, coverage, dialyzer, e2e, ci"
+	@echo "Targets: dev, setup, deps, fmt, fmt-check, lint, test, coverage, dialyzer, e2e, ci"
 
 setup:
 	$(MIX) setup
@@ -46,6 +46,6 @@ ci:
 
 all: ci
 
-# Pass the same explicit acknowledgement/workflow arguments as bin/symphony.
+# Portless routes https://symphony.localhost to the dashboard; pass the usual bin/symphony arguments in ARGS.
 dev:
-	sh bin/symphony-portless $(ARGS)
+	portless run --name symphony --app-port 4000 ./bin/symphony $(ARGS) --port 4000

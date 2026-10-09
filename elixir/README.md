@@ -121,6 +121,9 @@ Optional flags:
 
 - `--logs-root` tells Symphony to write logs under a different directory (default: `./log`)
 - `--port` also starts the Phoenix observability service (default: disabled)
+- `make dev ARGS='<flags> ./WORKFLOW.md'` runs the built `bin/symphony` with the dashboard at
+  `https://symphony.localhost` through [Portless](https://github.com/vercel-labs/portless)
+  (`npm install -g portless`); its first run may ask for `sudo` to bind port 443 and trust a local certificate
 
 The `WORKFLOW.md` file uses YAML front matter for configuration, plus a Markdown body used as the
 Codex session prompt.
@@ -306,35 +309,6 @@ The observability UI now runs on a minimal Phoenix stack:
 - Bandit as the HTTP server
 - Phoenix dependency static assets for the LiveView client bootstrap
 - Tracker issue identifiers link to the tracker-provided URL when it uses `http` or `https`
-
-
-## Local URLs with Portless
-
-Run from `elixir/` after the usual dependency setup and `mix build`.
-This launcher passes all existing Symphony arguments to the built executable and
-supplies the allocated dashboard port. Symphony still enforces its required
-startup acknowledgement and workflow validation.
-
-The standard development command uses [Portless](https://github.com/vercel-labs/portless).
-Install its pinned CLI once with Node.js 24 or newer, then run this repository's command after the
-normal dependency and environment setup:
-
-```sh
-npm install -g portless@0.15.7
-make dev ARGS='--i-understand-that-this-will-be-running-without-the-usual-guardrails ./WORKFLOW.md'
-```
-
-The main checkout uses `https://symphony.localhost` with the default proxy settings.
-Use the URL printed by Portless if you have changed its proxy port, TLS, or TLD.
-Linked Git worktrees get a branch prefix, so each checkout has its own origin.
-The first HTTPS run can request local administrator permission to bind port 443,
-trust its development certificate, and synchronize local hostnames. Ctrl+C stops
-the child server and removes its route.
-
-The observability UI remains at `/`, with its normal JSON API under `/api/v1/`.
-Keep `server.host` set to the default `127.0.0.1` in the workflow for local access.
-The launcher does not change tracker credentials, issue polling, workspace policy,
-or agent permissions; running it starts the same orchestrator as `bin/symphony`.
 
 ## Project Layout
 
