@@ -319,9 +319,32 @@ The observability UI now runs on a minimal Phoenix stack:
 
 ## Testing
 
+From `elixir/`, with the Elixir/OTP versions in `mise.toml` installed, run:
+
 ```bash
+mix setup
 make all
 ```
+
+`make all` builds the escript, checks formatting and lint, runs ExUnit with coverage,
+and runs Dialyzer. Its 100% coverage threshold applies only to the modules included
+by `test_coverage` in `mix.exs`; several orchestration, tracker, and web modules are
+excluded, so this is not whole-application coverage. Live external end-to-end tests
+are opt-in and are skipped during this local check.
+
+Commit `mix.lock` with dependency changes. To update the dependencies identified by
+Hex security advisories, name them explicitly:
+
+```bash
+mix deps.update bandit decimal plug_crypto
+make all
+```
+
+This also updates dependencies of those packages when needed, such as
+`thousand_island` for Bandit. Review the resulting lockfile diff and Hex advisory
+output before committing it.
+The locked Bandit 1.13+, Decimal 3.1.2+, and Plug Crypto 2.2.1+ releases contain fixes
+for the advisories reported against the earlier lockfile.
 
 Run the real external end-to-end test only when you want Symphony to create disposable Linear
 resources and launch a real `codex app-server` session:
